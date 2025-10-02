@@ -155,15 +155,21 @@
     <script src="{{ asset('assets/libs/listree/listree.umd.min.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            listree();
+        listree();
 
-            // Toggle field berdasarkan tipe
-            document.getElementById('typeModel').addEventListener('change', toggleFields);
-            document.getElementById('typeManual').addEventListener('change', toggleFields);
+        // Toggle field berdasarkan tipe
+        const typeModel = document.getElementById('typeModel');
+        const typeManual = document.getElementById('typeManual');
+        if (typeModel && typeManual) {
+            typeModel.addEventListener('change', toggleFields);
+            typeManual.addEventListener('change', toggleFields);
             toggleFields();
+        }
 
-            // Submit form modal
-            document.getElementById('permissionForm').addEventListener('submit', function(e) {
+        // Submit form modal
+        const permissionForm = document.getElementById('permissionForm');
+        if (permissionForm) {
+            permissionForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const formData = new FormData(this);
 
@@ -177,68 +183,137 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        location.reload(); // refresh tree
+                        swal({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: data.message,
+                            timer: 1500,
+                            buttons: false,
+                        }).then(() => {
+                            location.reload();
+                        });
                     } else {
-                        alert('Error: ' + (data.message || 'Gagal menyimpan permission.'));
+                        swal({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: data.message || 'Terjadi kesalahan.'
+                        });
                     }
                 })
-                .catch(err => {
-                    alert('Terjadi kesalahan jaringan.');
+                .catch(() => {
+                    swal({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Terjadi kesalahan jaringan.'
+                    });
                 });
             });
+        }
+    });
+
+    function toggleFields() {
+        const isModel = document.getElementById('typeModel').checked;
+        document.getElementById('manualField').classList.toggle('d-none', isModel);
+        document.getElementById('modelField').classList.toggle('d-none', !isModel);
+        document.getElementById('permName').required = !isModel;
+        document.getElementById('modelName').required = isModel;
+    }
+
+    // ✅ HAPUS PERMISSION INDIVIDU DENGAN SWAL
+    function deletePermission(id, name) {
+        swal({
+            title: 'Yakin?',
+            text: `Hapus permission ${name}?`,
+            icon: 'warning',
+            buttons: true,
+            dangerMode: true,
+        }).then((isConfirmed) => {
+            if (isConfirmed) {
+                fetch("{{ route('permissions.destroy', ':id') }}".replace(':id', id), {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        swal({
+                            icon: 'success',
+                            title: 'Dihapus!',
+                            text: 'Permission berhasil dihapus.',
+                            timer: 1200,
+                            buttons: false,
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        swal({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: data.message || 'Tidak dapat menghapus permission.'
+                        });
+                    }
+                })
+                .catch(() => {
+                    swal({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Terjadi kesalahan saat menghapus.'
+                    });
+                });
+            }
         });
+    }
 
-        function toggleFields() {
-            const isModel = document.getElementById('typeModel').checked;
-            document.getElementById('manualField').classList.toggle('d-none', isModel);
-            document.getElementById('modelField').classList.toggle('d-none', !isModel);
-            document.getElementById('permName').required = !isModel;
-            document.getElementById('modelName').required = isModel;
-        }
-
-        // HAPUS PERMISSION INDIVIDU
-        function deletePermission(id, name) {
-            if (!confirm(`Hapus permission "${name}"?`)) return;
-
-            fetch("{{ route('permissions.destroy', ':id') }}".replace(':id', id), {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Gagal menghapus permission.');
-                }
-            })
-            .catch(() => alert('Terjadi kesalahan.'));
-        }
-
-        // HAPUS SEMUA PERMISSION MODEL
-        function deleteModelPermissions(model) {
-            if (!confirm(`Hapus SEMUA permission untuk model "${model}"?`)) return;
-
-            fetch("{{ route('permissions.deletes', ':model') }}".replace(':model', model), {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Gagal menghapus permission model.');
-                }
-            })
-            .catch(() => alert('Terjadi kesalahan.'));
-        }
+    // ✅ HAPUS SEMUA PERMISSION MODEL DENGAN SWAL
+    function deleteModelPermissions(model) {
+        swal({
+            title: 'Yakin?',
+            text: `Hapus SEMUA permission untuk model "${model}"?`,
+            icon: 'warning',
+            buttons: true,
+            dangerMode: true,
+        }).then((isConfirmed) => {
+            if (isConfirmed) {
+                fetch("{{ route('permissions.deletes', ':model') }}".replace(':model', model), {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        swal({
+                            icon: 'success',
+                            title: 'Dihapus!',
+                            text: `Semua permission untuk model "${model}" berhasil dihapus.`,
+                            timer: 1500,
+                            buttons: false,
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        swal({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: data.message || 'Tidak dapat menghapus permission model.'
+                        });
+                    }
+                })
+                .catch(() => {
+                    swal({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Terjadi kesalahan saat menghapus.'
+                    });
+                });
+            }
+        });
+    }
     </script>
     @endpush
 </x-master-layout>
